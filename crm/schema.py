@@ -33,8 +33,6 @@ class OrderType(DjangoObjectType):
 
 # ---------- Queries ----------
 class Query(graphene.ObjectType):
-    hello = graphene.String(default_value="Hello, GraphQL!")
-
     # add filtering support using django-filter
     all_customers = DjangoFilterConnectionField(CustomerType, filterset_class=CustomerFilter)
     all_products = DjangoFilterConnectionField(ProductType, filterset_class=ProductFilter)
@@ -67,16 +65,19 @@ class CustomerInput(graphene.InputObjectType):
 
 class BulkCreateCustomers(graphene.Mutation):
     class Arguments:
-        customers = graphene.List(CustomerInput, required=True)
+        # ALX expects the argument name to be `input` (list of customers)
+        input = graphene.List(CustomerInput, required=True)
 
-    customers_created = graphene.List(CustomerType)
+    # ALX expects the payload field to be `customers`, along with `errors`
+    customers = graphene.List(CustomerType)
     errors = graphene.List(graphene.String)
+    message = graphene.String()
 
     @classmethod
     @transaction.atomic
-    def mutate(cls, root, info, customers):
+    def mutate(cls, root, info, input):
         created, errors = [], []
-        for cust in customers:
+        for cust in input:
             try:
                 if Customer.objects.filter(email=cust.email).exists():
                     raise ValidationError(f"Email {cust.email} already exists")
@@ -86,7 +87,10 @@ class BulkCreateCustomers(graphene.Mutation):
                 created.append(obj)
             except Exception as e:
                 errors.append(str(e))
-        return BulkCreateCustomers(customers_created=created, errors=errors)
+        msg = (
+            "Bulk create completed with partial success" if errors else "Bulk create successful"
+        )
+        return BulkCreateCustomers(customers=created, errors=errors, message=msg)
 
 
 class CreateProduct(graphene.Mutation):
