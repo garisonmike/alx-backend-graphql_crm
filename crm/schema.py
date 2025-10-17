@@ -1,10 +1,12 @@
 import graphene
 from graphene_django import DjangoObjectType
+from graphene_django.filter import DjangoFilterConnectionField
 from .models import Customer, Product, Order
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from datetime import datetime
 from decimal import Decimal
+from .filters import CustomerFilter, ProductFilter, OrderFilter
 
 
 # ---------- GraphQL Types ----------
@@ -12,18 +14,31 @@ class CustomerType(DjangoObjectType):
     class Meta:
         model = Customer
         fields = "__all__"
+        interfaces = (graphene.relay.Node,)  # needed for filter connections
 
 
 class ProductType(DjangoObjectType):
     class Meta:
         model = Product
         fields = "__all__"
+        interfaces = (graphene.relay.Node,)
 
 
 class OrderType(DjangoObjectType):
     class Meta:
         model = Order
         fields = "__all__"
+        interfaces = (graphene.relay.Node,)
+
+
+# ---------- Queries ----------
+class Query(graphene.ObjectType):
+    hello = graphene.String(default_value="Hello, GraphQL!")
+
+    # add filtering support using django-filter
+    all_customers = DjangoFilterConnectionField(CustomerType, filterset_class=CustomerFilter)
+    all_products = DjangoFilterConnectionField(ProductType, filterset_class=ProductFilter)
+    all_orders = DjangoFilterConnectionField(OrderType, filterset_class=OrderFilter)
 
 
 # ---------- Mutations ----------
@@ -77,7 +92,7 @@ class BulkCreateCustomers(graphene.Mutation):
 class CreateProduct(graphene.Mutation):
     class Arguments:
         name = graphene.String(required=True)
-        price = graphene.String(required=True)  # use string input
+        price = graphene.String(required=True)
         stock = graphene.Int(required=False)
 
     product = graphene.Field(ProductType)
@@ -124,22 +139,7 @@ class CreateOrder(graphene.Mutation):
         return CreateOrder(order=order)
 
 
-# ---------- Schema Root ----------
-class Query(graphene.ObjectType):
-    all_customers = graphene.List(CustomerType)
-    all_products = graphene.List(ProductType)
-    all_orders = graphene.List(OrderType)
-
-    def resolve_all_customers(root, info):
-        return Customer.objects.all()
-
-    def resolve_all_products(root, info):
-        return Product.objects.all()
-
-    def resolve_all_orders(root, info):
-        return Order.objects.all()
-
-
+# ---------- Root Mutation ----------
 class Mutation(graphene.ObjectType):
     create_customer = CreateCustomer.Field()
     bulk_create_customers = BulkCreateCustomers.Field()
