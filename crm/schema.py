@@ -54,7 +54,10 @@ class CreateCustomer(graphene.Mutation):
             raise ValidationError("Email already exists")
         customer = Customer(name=name, email=email, phone=phone)
         customer.save()
-        return CreateCustomer(customer=customer, message="Customer created successfully")
+        result = CreateCustomer()
+        result.customer = customer
+        result.message = "Customer created successfully"
+        return result
 
 
 class CustomerInput(graphene.InputObjectType):
@@ -68,7 +71,6 @@ class BulkCreateCustomers(graphene.Mutation):
         # ALX expects the argument name to be `input` (list of customers)
         input = graphene.List(CustomerInput, required=True)
 
-    # ALX expects the payload field to be `customers`, along with `errors`
     customers = graphene.List(CustomerType)
     errors = graphene.List(graphene.String)
     message = graphene.String()
@@ -90,18 +92,24 @@ class BulkCreateCustomers(graphene.Mutation):
         msg = (
             "Bulk create completed with partial success" if errors else "Bulk create successful"
         )
-        return BulkCreateCustomers(customers=created, errors=errors, message=msg)
+        result = BulkCreateCustomers()
+        result.customers = created
+        result.errors = errors
+        result.message = msg
+        return result
 
 
 class CreateProduct(graphene.Mutation):
     class Arguments:
         name = graphene.String(required=True)
         price = graphene.String(required=True)
-        stock = graphene.Int(required=False)
+        stock = graphene.Int(required=False, default_value=0)
 
     product = graphene.Field(ProductType)
+    message = graphene.String()
 
-    def mutate(self, info, name, price, stock=0):
+    @classmethod
+    def mutate(cls, root, info, name, price, stock=0):
         try:
             price_decimal = Decimal(price)
         except Exception:
@@ -114,7 +122,10 @@ class CreateProduct(graphene.Mutation):
 
         product = Product(name=name, price=price_decimal, stock=stock)
         product.save()
-        return CreateProduct(product=product)
+        result = CreateProduct()
+        result.product = product
+        result.message = "Product created successfully"
+        return result
 
 
 class CreateOrder(graphene.Mutation):
@@ -124,8 +135,10 @@ class CreateOrder(graphene.Mutation):
         order_date = graphene.DateTime(required=False)
 
     order = graphene.Field(OrderType)
+    message = graphene.String()
 
-    def mutate(self, info, customer_id, product_ids, order_date=None):
+    @classmethod
+    def mutate(cls, root, info, customer_id, product_ids, order_date=None):
         try:
             customer = Customer.objects.get(pk=customer_id)
         except Customer.DoesNotExist:
@@ -138,9 +151,12 @@ class CreateOrder(graphene.Mutation):
         order = Order(customer=customer, order_date=order_date or datetime.now())
         order.save()
         order.products.set(products)
-        order.total_amount = sum(p.price for p in products)
+        order.total_amount = sum((p.price for p in products), Decimal("0"))
         order.save()
-        return CreateOrder(order=order)
+        result = CreateOrder()
+        result.order = order
+        result.message = "Order created successfully"
+        return result
 
 
 # ---------- Root Mutation ----------
