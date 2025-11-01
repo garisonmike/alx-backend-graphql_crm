@@ -6,9 +6,16 @@
 #              to /tmp/customer_cleanup_log.txt with a timestamp.
 # ----------------------------------------------------------------------
 
-# Define project and Python paths
-PROJECT_DIR="/home/spiderman/Projects/alx-backend-graphql_crm"
-PYTHON_BIN="$PROJECT_DIR/venv/bin/python"
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# Use python3 or venv python
+if [ -f "$PROJECT_DIR/venv/bin/python" ]; then
+    PYTHON_BIN="$PROJECT_DIR/venv/bin/python"
+else
+    PYTHON_BIN="python3"
+fi
 
 # Navigate to the project directory
 cd "$PROJECT_DIR" || exit 1
@@ -19,7 +26,7 @@ from crm.models import Customer
 from datetime import timedelta
 from django.utils import timezone
 
-threshold = timezone.now() - timedelta(days=30)
+threshold = timezone.now() - timedelta(days=365)
 inactive_customers = Customer.objects.filter(created_at__lt=threshold)
 deleted, _ = inactive_customers.delete()
 print(deleted)
@@ -27,4 +34,4 @@ print(deleted)
 
 # Log the result with timestamp
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
-echo \"$TIMESTAMP - Deleted $DELETED_COUNT inactive customers\" >> /tmp/customer_cleanup_log.txt
+echo "$TIMESTAMP - Deleted $DELETED_COUNT inactive customers" >> /tmp/customer_cleanup_log.txt
