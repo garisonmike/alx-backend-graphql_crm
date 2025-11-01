@@ -15,11 +15,13 @@ cd "$PROJECT_DIR" || exit 1
 
 # Run Django shell command to delete inactive customers
 DELETED_COUNT=$($PYTHON_BIN manage.py shell -c "
+from crm.models import Customer
 from datetime import timedelta
 from django.utils import timezone
-from crm.models import Customer
-cutoff = timezone.now() - timedelta(days=365)
-deleted, _ = Customer.objects.filter(orders__isnull=True, date_joined__lt=cutoff).delete()
+
+threshold = timezone.now() - timedelta(days=30)
+inactive_customers = Customer.objects.filter(created_at__lt=threshold)
+deleted, _ = inactive_customers.delete()
 print(deleted)
 ")
 
