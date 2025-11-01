@@ -7,3 +7,4 @@ gql==3.5.0
 celery==5.4.0
 django-celery-beat==2.7.0
 redis==5.2.0
+psycopg2-binary==2.9.9
